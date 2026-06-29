@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stefan's Daily To-Do</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #1a1a2e;
+    color: #e8e8f0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .app {
+    background: #16213e;
+    border-radius: 16px;
+    width: 100%;
+    max-width: 560px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+  .header {
+    background: linear-gradient(135deg, #1350CC, #4D2393);
+    padding: 28px 28px 20px;
+  }
+  .header h1 { font-size: 22px; font-weight: 600; color: #fff; }
+  .date-label { font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+  .stats { display: flex; gap: 12px; margin-top: 14px; }
+  .stat {
+    background: rgba(255,255,255,0.12);
+    border-radius: 8px; padding: 7px 13px;
+    font-size: 13px; color: rgba(255,255,255,0.85);
+  }
+  .stat span { font-weight: 600; color: #fff; margin-right: 4px; }
+  .save-status { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 10px; height: 14px; }
+  .save-status.ok { color: #4ade80; }
+
+  /* Voice button - big, prominent */
+  .voice-section {
+    padding: 18px 24px 0;
+  }
+  .mic-big {
+    width: 100%;
+    padding: 16px;
+    border-radius: 14px;
+    border: 2px solid rgba(241,87,60,0.35);
+    background: rgba(241,87,60,0.08);
+    color: #F1573C;
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .mic-big:hover { background: rgba(241,87,60,0.15); border-color: rgba(241,87,60,0.6); }
+  .mic-big.recording {
+    background: #F1573C;
+    border-color: #F1573C;
+    color: white;
+    animation: pulseBtn 1.2s infinite;
+  }
+  @keyframes pulseBtn {
+    0%,100% { box-shadow: 0 0 0 0 rgba(241,87,60,0.4); }
+    50% { box-shadow: 0 0 0 10px rgba(241,87,60,0); }
+  }
+  .mic-icon { font-size: 22px; }
+  .mic-label { flex: 1; text-align: left; }
+  .mic-hint { font-size: 11px; opacity: 0.6; }
+
+  /* Live transcript bubble */
+  .transcript-box {
+    margin: 10px 24px 0;
+    min-height: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+    font-style: italic;
+  }
+  .transcript-box.visible {
+    max-height: 80px;
+    padding: 10px 14px;
+  }
+  .transcript-box .interim { color: rgba(255,255,255,0.4); }
+  .transcript-box .final { color: #e8e8f0; font-style: normal; font-weight: 500; }
+
+  .input-row {
+    display: flex; gap: 10px; align-items: center;
+    padding: 14px 24px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .task-input {
+    flex: 1;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px; padding: 11px 15px;
+    color: #e8e8f0; font-family: 'Inter', sans-serif;
+    font-size: 14px; outline: none;
+  }
+  .task-input::placeholder { color: rgba(255,255,255,0.28); }
+  .task-input:focus { border-color: #1350CC; }
+  .add-btn {
+    border-radius: 10px; width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0; border: none; font-size: 26px; font-weight: 300;
+    background: #1350CC; color: white; transition: all 0.2s;
+  }
+  .add-btn:hover { background: #0e3fa8; }
+
+  .filters { display: flex; gap: 8px; padding: 12px 24px 8px; flex-wrap: wrap; }
+  .filter-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px; padding: 5px 13px;
+    color: rgba(255,255,255,0.45);
+    font-family: 'Inter', sans-serif; font-size: 12px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .filter-btn.active { background: #1350CC; border-color: #1350CC; color: white; }
+
+  .task-list { padding: 6px 24px 20px; max-height: 400px; overflow-y: auto; }
+  .task-list::-webkit-scrollbar { width: 3px; }
+  .task-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+  .task-item {
+    display: flex; align-items: center; gap: 11px;
+    padding: 12px 13px; border-radius: 10px; margin-bottom: 5px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+    animation: fadeIn 0.2s ease;
+  }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(-5px)} to{opacity:1;transform:translateY(0)} }
+  .task-item:hover { background: rgba(255,255,255,0.07); }
+  .task-item.done { opacity: 0.4; }
+  .check-circle {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.2);
+    cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s;
+  }
+  .check-circle:hover { border-color: #1350CC; }
+  .check-circle.checked { background: #1350CC; border-color: #1350CC; }
+  .check-circle.checked::after { content: '✓'; color: white; font-size: 11px; font-weight: 700; }
+  .task-text { flex: 1; font-size: 14px; line-height: 1.4; word-break: break-word; }
+  .task-item.done .task-text { text-decoration: line-through; color: rgba(255,255,255,0.3); }
+  .task-meta { font-size: 10px; color: rgba(255,255,255,0.22); white-space: nowrap; }
+  .carry-btn {
+    background: transparent;
+    border: 1px solid rgba(241,87,60,0.3);
+    border-radius: 6px; padding: 3px 7px;
+    color: #F1573C; font-size: 11px; cursor: pointer;
+    font-family: 'Inter', sans-serif; white-space: nowrap;
+    transition: background 0.2s;
+  }
+  .carry-btn:hover, .carry-btn.on { background: rgba(241,87,60,0.15); }
+  .del-btn {
+    background: none; border: none;
+    color: rgba(255,255,255,0.18); cursor: pointer;
+    font-size: 15px; padding: 2px 4px; flex-shrink: 0;
+    transition: color 0.2s;
+  }
+  .del-btn:hover { color: rgba(255,80,80,0.7); }
+  .carried-tag {
+    font-size: 10px; background: rgba(241,87,60,0.15);
+    color: #F1573C; padding: 1px 6px; border-radius: 8px; margin-left: 5px;
+  }
+  .empty { text-align: center; padding: 36px 20px; color: rgba(255,255,255,0.22); font-size: 14px; }
+  .empty div { font-size: 30px; margin-bottom: 8px; }
+  .footer {
+    padding: 12px 24px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .clear-btn {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px; padding: 6px 13px;
+    color: rgba(255,255,255,0.35);
+    font-family: 'Inter', sans-serif; font-size: 12px;
+    cursor: pointer; transition: all 0.2s;
+  }
+  .clear-btn:hover { color: rgba(255,255,255,0.6); border-color: rgba(255,255,255,0.2); }
+  .hint { font-size: 11px; color: rgba(255,255,255,0.2); }
+
+  /* No speech support warning */
+  .no-speech {
+    margin: 14px 24px 0;
+    padding: 10px 14px;
+    background: rgba(255,200,0,0.08);
+    border: 1px solid rgba(255,200,0,0.2);
+    border-radius: 10px;
+    font-size: 12px;
+    color: rgba(255,200,0,0.7);
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>Stefan's Daily To-Do</h1>
+    <div class="date-label" id="dateLabel"></div>
+    <div class="stats">
+      <div class="stat"><span id="cTotal">0</span> tasks</div>
+      <div class="stat"><span id="cDone">0</span> done</div>
+      <div class="stat"><span id="cLeft">0</span> remaining</div>
+    </div>
+    <div class="save-status" id="saveStatus">Ready</div>
+  </div>
+
+  <!-- Big voice button -->
+  <div class="voice-section" id="voiceSection" style="display:none">
+    <button class="mic-big" id="micBig">
+      <span class="mic-icon">🎤</span>
+      <span class="mic-label">
+        <span id="micLabelText">Tap to speak a task</span><br>
+        <span class="mic-hint" id="micHintText">Adds automatically when you stop speaking</span>
+      </span>
+    </button>
+  </div>
+  <div class="transcript-box" id="transcriptBox"></div>
+  <div class="no-speech" id="noSpeechMsg" style="display:none">
+    Voice input isn't supported in this browser. Use Chrome on desktop or mobile for best results.
+  </div>
+
+  <div class="input-row">
+    <input id="taskInput" class="task-input" type="text" placeholder="Or type a task and press Enter" />
+    <button class="add-btn" id="addBtn">+</button>
+  </div>
+
+  <div class="filters">
+    <button class="filter-btn active" data-f="all">All</button>
+    <button class="filter-btn" data-f="pending">Remaining</button>
+    <button class="filter-btn" data-f="done">Done</button>
+    <button class="filter-btn" data-f="carried">Carried Over</button>
+  </div>
+
+  <div class="task-list" id="taskList"></div>
+
+  <div class="footer">
+    <button class="clear-btn" id="clearDone">Clear completed tasks</button>
+    <span class="hint">✓ Tasks save automatically</span>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = 'stefan_todo_v2';
+  let tasks = [];
+  let filter = 'all';
+
+  document.getElementById('dateLabel').textContent = new Date().toLocaleDateString('en-ZA', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+  });
+
+  function shortDate(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' });
+  }
+
+  function setStatus(msg, isOk) {
+    const el = document.getElementById('saveStatus');
+    el.textContent = msg;
+    el.className = 'save-status' + (isOk ? ' ok' : '');
+  }
+
+  function save() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      setStatus('✓ Saved', true);
+      setTimeout(() => setStatus('Tasks save automatically', false), 1500);
+    } catch(e) { setStatus('Could not save!', false); }
+  }
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      tasks = raw ? JSON.parse(raw) : [];
+    } catch(e) { tasks = []; }
+    setStatus('Tasks save automatically', false);
+    render();
+  }
+
+  function render() {
+    const list = document.getElementById('taskList');
+    let view = tasks;
+    if (filter === 'pending') view = tasks.filter(t => !t.done);
+    if (filter === 'done')    view = tasks.filter(t => t.done);
+    if (filter === 'carried') view = tasks.filter(t => t.carried);
+
+    const done = tasks.filter(t => t.done).length;
+    document.getElementById('cTotal').textContent = tasks.length;
+    document.getElementById('cDone').textContent = done;
+    document.getElementById('cLeft').textContent = tasks.length - done;
+
+    if (view.length === 0) {
+      list.innerHTML = `<div class="empty"><div>${filter === 'done' ? '🎉' : '📋'}</div>${filter === 'done' ? 'Nothing completed yet' : 'No tasks here'}</div>`;
+      return;
+    }
+
+    list.innerHTML = view.map(t => {
+      const i = tasks.indexOf(t);
+      return `<div class="task-item ${t.done ? 'done' : ''}">
+        <div class="check-circle ${t.done ? 'checked' : ''}" onclick="toggle(${i})"></div>
+        <div class="task-text">${t.text}${t.carried ? '<span class="carried-tag">carried</span>' : ''}</div>
+        <span class="task-meta">${shortDate(t.date)}</span>
+        <button class="carry-btn ${t.carried ? 'on' : ''}" onclick="carry(${i})">${t.carried ? '↩ undo' : '→ tmrw'}</button>
+        <button class="del-btn" onclick="del(${i})">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  function addTask(text) {
+    if (!text.trim()) return;
+    tasks.unshift({ text: text.trim(), done: false, carried: false, date: new Date().toISOString() });
+    save(); render();
+  }
+
+  function toggle(i) { tasks[i].done = !tasks[i].done; save(); render(); }
+  function carry(i)  { tasks[i].carried = !tasks[i].carried; save(); render(); }
+  function del(i)    { tasks.splice(i, 1); save(); render(); }
+
+  document.getElementById('addBtn').onclick = () => {
+    const inp = document.getElementById('taskInput');
+    addTask(inp.value); inp.value = '';
+  };
+  document.getElementById('taskInput').onkeydown = e => {
+    if (e.key === 'Enter') { addTask(e.target.value); e.target.value = ''; }
+  };
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.onclick = () => {
+      document.querySelectorAll('.filter-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      filter = b.dataset.f;
+      render();
+    };
+  });
+  document.getElementById('clearDone').onclick = () => {
+    tasks = tasks.filter(t => !t.done); save(); render();
+  };
+
+  // ── Voice input ──────────────────────────────────────────────
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SR) {
+    document.getElementById('noSpeechMsg').style.display = 'block';
+  } else {
+    document.getElementById('voiceSection').style.display = 'block';
+
+    const rec = new SR();
+    rec.lang = 'en-ZA';
+    rec.continuous = true;          // keep listening — don't cut off early
+    rec.interimResults = true;      // show live preview as you speak
+    rec.maxAlternatives = 1;
+
+    let isRecording = false;
+    let silenceTimer = null;
+    let finalText = '';
+    let autoStopDelay = 2000;       // adds task 2 seconds after you stop speaking
+
+    const micBig        = document.getElementById('micBig');
+    const micLabelText  = document.getElementById('micLabelText');
+    const micHintText   = document.getElementById('micHintText');
+    const transcriptBox = document.getElementById('transcriptBox');
+
+    function startRecording() {
+      finalText = '';
+      transcriptBox.innerHTML = '';
+      transcriptBox.classList.add('visible');
+      transcriptBox.innerHTML = '<span class="interim">Listening… speak now</span>';
+      isRecording = true;
+      micBig.classList.add('recording');
+      micLabelText.textContent = 'Listening… speak your task';
+      micHintText.textContent = 'Tap again to cancel';
+      try { rec.start(); } catch(e) {}
+    }
+
+    function stopRecording(addIt) {
+      isRecording = false;
+      clearTimeout(silenceTimer);
+      try { rec.stop(); } catch(e) {}
+      micBig.classList.remove('recording');
+      micLabelText.textContent = 'Tap to speak a task';
+      micHintText.textContent = 'Adds automatically when you stop speaking';
+
+      if (addIt && finalText.trim()) {
+        addTask(finalText.trim());
+        transcriptBox.innerHTML = `<span class="final">✓ Added: "${finalText.trim()}"</span>`;
+        setTimeout(() => {
+          transcriptBox.classList.remove('visible');
+        }, 2000);
+      } else {
+        transcriptBox.classList.remove('visible');
+      }
+      finalText = '';
+    }
+
+    rec.onresult = (e) => {
+      let interim = '';
+      let final = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) {
+          final += t + ' ';
+        } else {
+          interim += t;
+        }
+      }
+      if (final) finalText += final;
+
+      // Show live transcript
+      const display = (finalText + interim).trim();
+      transcriptBox.innerHTML = display
+        ? `<span class="final">${finalText.trim()}</span> <span class="interim">${interim}</span>`
+        : '<span class="interim">Listening… speak now</span>';
+
+      // Reset silence timer — add task after 2s of no new speech
+      clearTimeout(silenceTimer);
+      if (finalText.trim()) {
+        silenceTimer = setTimeout(() => stopRecording(true), autoStopDelay);
+      }
+    };
+
+    rec.onerror = (e) => {
+      if (e.error === 'no-speech') {
+        // Just restart — don't show an error
+        if (isRecording) {
+          try { rec.stop(); rec.start(); } catch(err) {}
+        }
+        return;
+      }
+      if (e.error === 'not-allowed') {
+        transcriptBox.innerHTML = '<span style="color:#F1573C">Microphone access denied. Please allow it in your browser settings.</span>';
+        transcriptBox.classList.add('visible');
+        stopRecording(false);
+        return;
+      }
+      stopRecording(false);
+    };
+
+    rec.onend = () => {
+      // If we're still meant to be recording (e.g. browser cut us off), restart
+      if (isRecording && !finalText.trim()) {
+        try { rec.start(); } catch(e) {}
+      }
+    };
+
+    micBig.onclick = () => {
+      if (isRecording) {
+        stopRecording(!!finalText.trim());
+      } else {
+        startRecording();
+      }
+    };
+  }
+
+  load();
+</script>
+</body>
+</html>
